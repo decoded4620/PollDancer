@@ -1,10 +1,9 @@
 # Poll Dancer
 
-<p sytle="text-align: center;">
 
-![alt text](./docs/img/poll_dancer.png)   
+<img src="./docs/img/poll_dancer.png" width="33%">
 
-</p>
+
 
 
 Poll Dancer is a Java Widget that uses Non-Blocking behavior to hook up to callbacks that 
