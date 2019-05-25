@@ -131,6 +131,7 @@ public class PollDancer {
 
       LOG.warn("Running trigger: " + triggerCallback);
       triggerCallback.run();
+      stop();
     });
 
     return this;
