@@ -19,7 +19,7 @@ In this case Poll dancer will poll the trigger closure every 100 ms, and when Pl
 it will trigger poll dancer.
 ```java
 // A Play poll dancer that is triggered when Play Current is available.
-new PollDancer(executorService, this::onAppStartup, 100).setPollTrigger(() -> {
+new PollDancer(executorService, this::onAppStartup).setPollTrigger(() -> {
   try {
     Play.current();
     return true;
@@ -41,7 +41,7 @@ External object events can trigger poll dancer (so poll dancer can also be used 
 ZoolServiceHub zoolServiceHub;
 
 microServicesHub.setHostsLoadedCallback(
-          new PollDancer(executorService, this::onZoolHostsLoaded, 20).start()::triggerNow);
+          new PollDancer(executorService, this::onPollCallbackStereo).setPollIntervalMs(20).start()::triggerNow);
           
 private void onZoolHostsLoaded() {
    // zool service hosts loaded
