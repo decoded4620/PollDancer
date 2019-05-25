@@ -1,0 +1,4 @@
+ext {
+    appDependencies = java.util.Collections.emptyMap()
+    testDependencies = java.util.Collections.emptyMap()
+}
