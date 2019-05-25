@@ -15,10 +15,6 @@ in an "ansync" way.
 ## Use Case 1
 Use poll dancer to detect play application existence during the startup phase of a Play Server off of the main thread.
 
---- Main Thread --------------->>>
- \                          /
-  \-- Poll Dancer Thread --/
-
 In this case Poll dancer will poll the trigger closure every 100 ms, and when Play.current() doesn't throw
 it will trigger poll dancer.
 ```java
