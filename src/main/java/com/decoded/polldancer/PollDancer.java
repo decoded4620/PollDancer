@@ -1,51 +1,151 @@
 package com.decoded.polldancer;
 
-import java.util.concurrent.CompletableFuture;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.lang.Runnable;
-import java.lang.Thread;
-import java.lang.InterruptedException;
+import java.util.function.Supplier;
+
 
 /**
- * Poll dancer is a non blocking mechanism for callbacks. Thread A can trigger the PollDancer, that will ultimately
- * notify thread b by setting an internal atomic boolean upon which thread B is polling. When the boolean triggers, the onPollMethod
- * called in a non-blocking fashion.
+ * Poll dancer is a non blocking mechanism for callbacks. Thread A can triggerNow the PollDancer, that will ultimately
+ * notify thread b by setting an internal atomic boolean upon which thread B is polling. When the boolean triggers, the
+ * onPollMethod called in a non-blocking fashion.
  */
 public class PollDancer {
-  private AtomicBoolean trigger = new AtomicBoolean(false);
+  private static final Logger LOG = LoggerFactory.getLogger(PollDancer.class);
   private final ExecutorService executorService;
-  private Runnable onPoll;
+  private CountDownLatch triggerLatch;
+  private AtomicBoolean trigger = new AtomicBoolean(false);
+  private Runnable triggerCallback;
   private Thread pollDancerThread;
-  
-  // create for each callback you want to invoke from a trigger.
-  public PollDancer(ExecutorService executorService, Runnable onPoll) {
+  private Supplier<Boolean> pollTrigger = null;
+  private long pollIntervalMs = 100;
+  // this is big but can be set to whatever is desired for a specific use case.
+  private long maxTimeoutMs = 120000;
+
+  // create for each callback you want to invoke from a triggerNow.
+  public PollDancer(ExecutorService executorService, Runnable triggerCallback) {
     this.executorService = executorService;
-    this.onPoll = onPoll;
+    this.triggerCallback = triggerCallback;
   }
 
-  public void trigger() {
-    trigger.set(true);
+  private static void debugIf(Supplier<String> message) {
+    if (LOG.isDebugEnabled()) {
+      LOG.debug(message.get());
+    }
   }
-  public void start() {
+
+  public PollDancer setPollIntervalMs(long pollIntervalMs) {
+    this.pollIntervalMs = pollIntervalMs;
+    return this;
+  }
+
+  public PollDancer setMaxTimeoutMs(long maxTimeoutMs) {
+    this.maxTimeoutMs = maxTimeoutMs;
+    return this;
+  }
+
+  public PollDancer setTriggerCallback() {
+    this.triggerCallback = triggerCallback;
+    return this;
+  }
+
+  /**
+   * Adds a wrapped supplier and triggers the poll dancer when the supplier is called.
+   *
+   * @param triggerFun a triggerNow method that, when called will triggerNow poll dancer
+   *
+   * @return a Supplier that will return the result of calling the triggerNow method, and if the triggerNow method
+   * returns true, the poll dancer is effectively triggered.
+   */
+  public PollDancer setPollTrigger(Supplier<Boolean> triggerFun) {
+    if(pollTrigger != null) {
+      LOG.warn("Overwriting previous poll trigger!");
+    }
+    if (!trigger.get()) {
+      Supplier<Boolean> tf = () -> {
+        boolean result = triggerFun.get();
+        if (result) {
+          triggerNow();
+        }
+
+        return result;
+      };
+
+      pollTrigger = tf;
+    }
+    return this;
+  }
+
+  public void triggerNow() {
+    LOG.warn("trigger now!");
+    if (triggerLatch != null && triggerLatch.getCount() > 0) {
+      triggerLatch.countDown();
+    }
+    trigger.compareAndSet(false, true);
+  }
+
+  public PollDancer start() {
+    debugIf(() -> "starting...");
+    // each triggerNow function must happen (in no particular order) in order
+    // for the countdown latch to be triggered to zero.
+
     executorService.submit(() -> {
       pollDancerThread = Thread.currentThread();
-      while(!trigger.get()) {
+      if (pollTrigger != null) {
+        // if already true, triggerNow function will not actually update the value
+        debugIf(() -> "Polling");
+        long start = System.currentTimeMillis();
+        while (!trigger.compareAndSet(false, pollTrigger.get())) {
+          if (pollIntervalMs > 2) {
+            try {
+              debugIf(() -> "Next poll in " + pollIntervalMs + " ms");
+              Thread.sleep(pollIntervalMs);
+            } catch (InterruptedException ex) {
+              LOG.error("Error", ex);
+              return;
+            }
+          }
+
+          if (System.currentTimeMillis() - start > maxTimeoutMs) {
+            throw new RuntimeException(new TimeoutException("Timed out"));
+          }
+        }
+        debugIf(() -> "Polling complete running trigger");
+      } else {
+
+        debugIf(() -> "Waiting");
+        triggerLatch = new CountDownLatch(1);
         try {
-          Thread.sleep(100);
+          triggerLatch.await(maxTimeoutMs, TimeUnit.MILLISECONDS);
+          debugIf(() -> "Countdown complete!");
         } catch (InterruptedException ex) {
-          return;
+          throw new RuntimeException(new TimeoutException("Timed out"));
         }
       }
 
-      onPoll.run();
+      LOG.warn("Running trigger: " + triggerCallback);
+      triggerCallback.run();
     });
+
+    return this;
   }
 
-  public void stop() {
-    if(pollDancerThread != null) {
+  public PollDancer stop() {
+    debugIf(() -> "Stopping");
+    if (pollDancerThread != null) {
       pollDancerThread.interrupt();
+      trigger.compareAndSet(true, false);
+      pollTrigger = null;
       pollDancerThread = null;
+      triggerLatch = null;
     }
+
+    return this;
   }
 }
