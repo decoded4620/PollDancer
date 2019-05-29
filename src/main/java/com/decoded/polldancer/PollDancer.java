@@ -40,16 +40,30 @@ public class PollDancer {
     }
   }
 
+  /**
+   * The interval at which poll dancer will check for the focused object to be updated.
+   * @param pollIntervalMs the interval in milliseconds
+   * @return this PollDancer
+   */
   public PollDancer setPollIntervalMs(long pollIntervalMs) {
     this.pollIntervalMs = pollIntervalMs;
     return this;
   }
 
+  /**
+   * Set the max timeout that poll dancer will wait before considering the operation to be "un-ending" and timeout.
+   * @param maxTimeoutMs the max milliseconds to wait.
+   * @return A {@link PollDancer}
+   */
   public PollDancer setMaxTimeoutMs(long maxTimeoutMs) {
     this.maxTimeoutMs = maxTimeoutMs;
     return this;
   }
 
+  /**
+   * The Trigger Callback
+   * @return PollDancer
+   */
   public PollDancer setTriggerCallback() {
     this.triggerCallback = triggerCallback;
     return this;
@@ -82,14 +96,21 @@ public class PollDancer {
     return this;
   }
 
+  /**
+   * Trigger the poll dancer and stop the polling action.
+   */
   public void triggerNow() {
-    LOG.warn("trigger now!");
+    debugIf(() -> "trigger now!");
     if (triggerLatch != null && triggerLatch.getCount() > 0) {
       triggerLatch.countDown();
     }
     trigger.compareAndSet(false, true);
   }
 
+  /**
+   * Starts the polling action (the PollDance)
+   * @return this PollDancer instance.
+   */
   public PollDancer start() {
     debugIf(() -> "starting...");
     // each triggerNow function must happen (in no particular order) in order
@@ -129,7 +150,6 @@ public class PollDancer {
         }
       }
 
-      LOG.warn("Running trigger: " + triggerCallback);
       triggerCallback.run();
       stop();
     });
@@ -137,6 +157,11 @@ public class PollDancer {
     return this;
   }
 
+  /**
+   * Stop the poll dancer and clear the state.
+   *
+   * @return this poll dancer.
+   */
   public PollDancer stop() {
     debugIf(() -> "Stopping");
     if (pollDancerThread != null) {

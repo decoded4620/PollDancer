@@ -9,6 +9,7 @@ version '1.0'
 
 sourceCompatibility = 1.8
 
+apply from: './gradle/javadoc.gradle'
 apply from: './gradle/repositories.gradle'
 apply from: './gradle/dependencies.gradle'
 apply from: './gradle/publishing.gradle'
@@ -20,9 +21,7 @@ dependencies {
     Map<String, String> dependencies = globalConf.appDependencies
     Map<String, String> testDependencies = globalConf.testDependencies
 
-    // https://mvnrepository.com/artifact/org.slf4j/slf4j-api
     compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.26'
-// https://mvnrepository.com/artifact/org.slf4j/slf4j-log4j12
     compile group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.26'
 
 }
