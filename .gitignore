@@ -3,3 +3,6 @@ build
 **/*.iml
 **/*.ipr
 **/*.iws
+/out
+/target
+/build
