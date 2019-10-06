@@ -31,14 +31,14 @@ publishing {
     publications {
         maven(MavenPublication) {
             groupId = 'com.decoded'
-            artifactId = 'polldancer'
+            artifactId = 'PollDancer'
             version = '1.0'
 
             from components.java
         }
 
         mavenJava(MavenPublication) {
-            artifactId = 'polldancer'
+            artifactId = 'PollDancer'
             from components.java
             artifact sourcesJar
             artifact javadocJar
